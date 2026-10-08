@@ -507,3 +507,22 @@ saydo/
 10. Accuracy: links to the latest evaluation report and how to reproduce it.
 11. Hardware and performance table.
 12. Contributing, license and third-party model licenses.
+
+---
+
+## 22. Revisions from implementation planning (2026-10-09)
+These decisions refine the sections above. Where they conflict, this section takes precedence.
+1. **Env var names** follow `SAYDO__SECTION__KEY` everywhere, for example `SAYDO__API__TOKEN`. The single-underscore form in §9 is replaced.
+2. **Audio playback with a token.** `GET /recordings/{id}/audio-url` returns a playback URL signed with HMAC-SHA256 that expires after one hour. `<audio>` elements cannot send `Authorization` headers, so the audio endpoint accepts this URL in place of the header.
+3. **`POST /recordings/{id}/retry`** re-enqueues a failed recording (§15 Retry button). It returns 409 for any recording that is not in the failed state.
+4. **Plugin interfaces (§5)** take an in-memory `Audio` object (samples and sample rate) instead of a `Path`, so audio is decoded once.
+   - The embedder is a configured plugin kind (`pipeline.embedder`; default `pyannote/wespeaker-voxceleb-resnet34-LM`).
+   - SayDo computes speaker centroids itself from non-overlapping segments, so diarizers return only turns.
+   - Diarizers declare `wants_multichannel`.
+5. **Segment ASR score (§7)** is the duration-weighted mean, over the segment's words, of the score of each word's source ASR segment.
+6. **Packaging (§14, §20).** The API uses one Dockerfile with a `TORCH_FLAVOR` build argument and a `docker-compose.gpu.yml` override, replacing the separate CPU and CUDA Dockerfiles.
+7. **Evaluation code (§17, §20).**
+   - The evaluation library lives in `api/src/saydo/evaluation/` so it is typed and tested; `eval/` holds the CLI scripts, data and reports.
+   - cpWER is computed in SayDo, using Hungarian speaker assignment and word-level Levenshtein distance.
+   - LibriCSS is deferred to M5. Overlap results in Phase 1 are broken down per recording by reference overlap ratio.
+8. **Privacy (§12).** SayDo sets `PYANNOTE_METRICS_ENABLED=0` by default, which turns off pyannote's opt-out telemetry.
